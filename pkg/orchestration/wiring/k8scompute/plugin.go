@@ -272,7 +272,9 @@ func WireUp(resource *orch_v1.StateResource, context *wiringplugin.WiringContext
 		resourceNameLabel: string(resource.Name),
 	}
 
-	podSpec := buildPodSpec(containers, serviceAccountNameRef.Ref())
+	affinity := buildAffinity(context.StateContext.ServiceName)
+
+	podSpec := buildPodSpec(containers, serviceAccountNameRef.Ref(), affinity)
 
 	// The kube deployment object spec
 	deploymentSpec := buildDeploymentSpec(context, spec, podSpec, labelMap, iamRoleRef)
@@ -370,11 +372,12 @@ func generateSecretEnvVarsResource(compute voyager.ResourceName, spec *Spec, dep
 	return instanceResource, nil
 }
 
-func buildPodSpec(containers []core_v1.Container, serviceAccountName string) core_v1.PodSpec {
+func buildPodSpec(containers []core_v1.Container, serviceAccountName string, affinity *core_v1.Affinity) core_v1.PodSpec {
 	var terminationGracePeriodSeconds int64 = 30
 	return core_v1.PodSpec{
 		Containers:         containers,
 		ServiceAccountName: serviceAccountName,
+		Affinity:           affinity,
 
 		// field with default values
 		DNSPolicy:                     "ClusterFirst",
@@ -444,6 +447,36 @@ func buildContainers(spec *Spec, envDefault []core_v1.EnvVar, envFrom []core_v1.
 	}
 
 	return containers
+}
+
+func buildAffinity(serviceName voyager.ServiceName) *core_v1.Affinity {
+	matchExpressions := []meta_v1.LabelSelectorRequirement{
+		meta_v1.LabelSelectorRequirement{
+			Key:      "app",
+			Operator: "In",
+			Values: []string{
+				string(serviceName),
+			},
+		},
+	}
+
+	podAffinityTerms := []core_v1.PodAffinityTerm{
+		core_v1.PodAffinityTerm{
+			LabelSelector: &meta_v1.LabelSelector{
+				MatchExpressions: matchExpressions,
+			},
+			// TODO: Will the LimitPodHardAntiAffinityTopology admission controller prevent this?
+			TopologyKey: "failure-domain.beta.kubernetes.io/zone",
+		},
+	}
+
+	affinity := &core_v1.Affinity{
+		PodAntiAffinity: &core_v1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: podAffinityTerms,
+		},
+	}
+
+	return affinity
 }
 
 func buildHorizontalPodAutoscalerSpec(spec *Spec, deploymentName string) autoscaling_v2b1.HorizontalPodAutoscalerSpec {
