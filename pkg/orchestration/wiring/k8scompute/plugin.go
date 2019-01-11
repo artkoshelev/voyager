@@ -21,6 +21,7 @@ import (
 	apps_v1 "k8s.io/api/apps/v1"
 	autoscaling_v2b1 "k8s.io/api/autoscaling/v2beta1"
 	core_v1 "k8s.io/api/core/v1"
+	policy_v1 "k8s.io/api/policy/v1beta1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -272,7 +273,7 @@ func WireUp(resource *orch_v1.StateResource, context *wiringplugin.WiringContext
 		resourceNameLabel: string(resource.Name),
 	}
 
-	affinity := buildAffinity(context.StateContext.ServiceName)
+	affinity := buildAffinity(resource.Name)
 
 	podSpec := buildPodSpec(containers, serviceAccountNameRef.Ref(), affinity)
 
@@ -301,6 +302,13 @@ func WireUp(resource *orch_v1.StateResource, context *wiringplugin.WiringContext
 	}
 
 	smithResources = append(smithResources, deployment)
+
+	// Add pod disruption budget
+	pdbSpec := buildPodDisruptionBudgetSpec(resource.Name)
+	pdb := wiringplugin.WiredSmithResource{
+		// TODO: stuff goes here
+	}
+	smithResources = append(smithResources, pdb)
 
 	deploymentNameRef := smith_v1.Reference{
 		Name:     wiringutil.ReferenceName(deployment.SmithResource.Name, metadataElement, nameElement),
@@ -449,34 +457,55 @@ func buildContainers(spec *Spec, envDefault []core_v1.EnvVar, envFrom []core_v1.
 	return containers
 }
 
-func buildAffinity(serviceName voyager.ServiceName) *core_v1.Affinity {
+func buildAffinity(resourceName voyager.ResourceName) *core_v1.Affinity {
+	return &core_v1.Affinity{
+		PodAntiAffinity: buildAntiAffinity(resourceName),
+	}
+}
+
+func buildAntiAffinity(resourceName voyager.ResourceName) *core_v1.PodAntiAffinity {
 	matchExpressions := []meta_v1.LabelSelectorRequirement{
 		meta_v1.LabelSelectorRequirement{
 			Key:      "app",
 			Operator: "In",
 			Values: []string{
-				string(serviceName),
+				string(resourceName),
 			},
 		},
 	}
 
-	podAffinityTerms := []core_v1.PodAffinityTerm{
-		core_v1.PodAffinityTerm{
-			LabelSelector: &meta_v1.LabelSelector{
-				MatchExpressions: matchExpressions,
+	// Create WeightedPodAffinityTerms to configure antiaffinity to distibute
+	// the app to different zones, and then nodes (where possible)
+	podAffinityTerms := []core_v1.WeightedPodAffinityTerm{
+		core_v1.WeightedPodAffinityTerm{
+			Weight: 100,
+			PodAffinityTerm: core_v1.PodAffinityTerm{
+				LabelSelector: &meta_v1.LabelSelector{
+					MatchExpressions: matchExpressions,
+				},
+				TopologyKey: "failure-domain.beta.kubernetes.io/zone",
 			},
-			// TODO: Will the LimitPodHardAntiAffinityTopology admission controller prevent this?
-			TopologyKey: "failure-domain.beta.kubernetes.io/zone",
+		},
+		core_v1.WeightedPodAffinityTerm{
+			Weight: 50,
+			PodAffinityTerm: core_v1.PodAffinityTerm{
+				LabelSelector: &meta_v1.LabelSelector{
+					MatchExpressions: matchExpressions,
+				},
+				TopologyKey: "kubernetes.io/hostname",
+			},
 		},
 	}
 
-	affinity := &core_v1.Affinity{
-		PodAntiAffinity: &core_v1.PodAntiAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: podAffinityTerms,
-		},
+	return &core_v1.PodAntiAffinity{
+		PreferredDuringSchedulingIgnoredDuringExecution: podAffinityTerms,
 	}
+}
 
-	return affinity
+func buildPodDisruptionBudgetSpec(resourceName voyager.ResourceName) policy_v1.PodDisruptionBudgetSpec {
+	return policy_v1.PodDisruptionBudgetSpec{
+		// TODO: stuff goes here
+	}
 }
 
 func buildHorizontalPodAutoscalerSpec(spec *Spec, deploymentName string) autoscaling_v2b1.HorizontalPodAutoscalerSpec {
