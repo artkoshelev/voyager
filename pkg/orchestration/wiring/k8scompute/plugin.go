@@ -47,6 +47,8 @@ const (
 	podSecretEnvVarPluginTypeName = "podsecretenvvar"
 	bindingOutputRoleARNKey       = "IAMRoleARN"
 	envVarIgnoreRegex             = `^IamPolicySnippet$`
+
+	defaultPodDisruptionBudget = "30%"
 )
 
 var (
@@ -454,7 +456,7 @@ func buildAffinity(resourceName voyager.ResourceName) *core_v1.Affinity {
 func buildAntiAffinity(resourceName voyager.ResourceName) *core_v1.PodAntiAffinity {
 	matchExpressions := []meta_v1.LabelSelectorRequirement{
 		meta_v1.LabelSelectorRequirement{
-			Key:      "app",
+			Key:      resourceNameLabel,
 			Operator: "In",
 			Values: []string{
 				string(resourceName),

@@ -927,7 +927,7 @@ spec:
                   - podAffinityTerm:
                       labelSelector:
                         matchExpressions:
-                        - key: app
+                        - key: resourceName
                           operator: In
                           values:
                           - kc
@@ -936,7 +936,7 @@ spec:
                   - podAffinityTerm:
                       labelSelector:
                         matchExpressions:
-                        - key: app
+                        - key: resourceName
                           operator: In
                           values:
                           - kc

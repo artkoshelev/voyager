@@ -181,7 +181,7 @@ spec:
                   - podAffinityTerm:
                       labelSelector:
                         matchExpressions:
-                        - key: app
+                        - key: resourceName
                           operator: In
                           values:
                           - kubecompute-simple
@@ -190,7 +190,7 @@ spec:
                   - podAffinityTerm:
                       labelSelector:
                         matchExpressions:
-                        - key: app
+                        - key: resourceName
                           operator: In
                           values:
                           - kubecompute-simple
