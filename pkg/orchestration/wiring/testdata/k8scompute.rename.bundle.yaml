@@ -186,7 +186,7 @@ spec:
                           values:
                           - kubecompute-simple
                       topologyKey: failure-domain.beta.kubernetes.io/zone
-                    weight: 100
+                    weight: 75
                   - podAffinityTerm:
                       labelSelector:
                         matchExpressions:

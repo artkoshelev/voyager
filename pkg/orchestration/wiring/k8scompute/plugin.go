@@ -466,7 +466,7 @@ func buildAntiAffinity(resourceName voyager.ResourceName) *core_v1.PodAntiAffini
 	// the app to different zones, and then nodes (where possible)
 	podAffinityTerms := []core_v1.WeightedPodAffinityTerm{
 		core_v1.WeightedPodAffinityTerm{
-			Weight: 100,
+			Weight: 75,
 			PodAffinityTerm: core_v1.PodAffinityTerm{
 				LabelSelector: &meta_v1.LabelSelector{
 					MatchExpressions: matchExpressions,
