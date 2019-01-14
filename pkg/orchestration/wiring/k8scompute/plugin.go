@@ -42,6 +42,7 @@ const (
 
 	serviceAccountPostFix         = "svcacc"
 	podSecretEnvVarNamePostfix    = "podsecretenvvar"
+	pdbPostfix                    = "pdb"
 	hpaPostfix                    = "hpa"
 	podSecretEnvVarPluginTypeName = "podsecretenvvar"
 	bindingOutputRoleARNKey       = "IAMRoleARN"
@@ -304,9 +305,23 @@ func WireUp(resource *orch_v1.StateResource, context *wiringplugin.WiringContext
 	smithResources = append(smithResources, deployment)
 
 	// Add pod disruption budget
-	pdbSpec := buildPodDisruptionBudgetSpec(resource.Name)
+	pdbSpec := buildPodDisruptionBudgetSpec(resource.Name, labelMap)
 	pdb := wiringplugin.WiredSmithResource{
-		// TODO: stuff goes here
+		SmithResource: smith_v1.Resource{
+			Name: wiringutil.ResourceNameWithPostfix(resource.Name, pdbPostfix),
+			Spec: smith_v1.ResourceSpec{
+				Object: &policy_v1.PodDisruptionBudget{
+					TypeMeta: meta_v1.TypeMeta{
+						Kind:       k8s.PodDisruptionBudgetKind,
+						APIVersion: policy_v1.SchemeGroupVersion.String(),
+					},
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name: wiringutil.MetaName(resource.Name),
+					},
+					Spec: pdbSpec,
+				},
+			},
+		},
 	}
 	smithResources = append(smithResources, pdb)
 
@@ -502,9 +517,15 @@ func buildAntiAffinity(resourceName voyager.ResourceName) *core_v1.PodAntiAffini
 	}
 }
 
-func buildPodDisruptionBudgetSpec(resourceName voyager.ResourceName) policy_v1.PodDisruptionBudgetSpec {
+func buildPodDisruptionBudgetSpec(resourceName voyager.ResourceName, labelMap map[string]string) policy_v1.PodDisruptionBudgetSpec {
 	return policy_v1.PodDisruptionBudgetSpec{
-		// TODO: stuff goes here
+		MinAvailable: &intstr.IntOrString{
+			Type:   intstr.String,
+			StrVal: "33%",
+		},
+		Selector: &meta_v1.LabelSelector{
+			MatchLabels: labelMap,
+		},
 	}
 }
 
