@@ -43,7 +43,9 @@ func New() *WiringPlugin {
 			ObjectMeta:                    getObjectMeta,
 			References:                    getReferences,
 			ResourceType:                  ResourceType,
-			OptionalShapes:                svccatentangler.NoOptionalShapes,
+
+			// No shapes are returned. You cannot bind to this instance.
+			OptionalShapes: svccatentangler.NoOptionalShapes,
 		},
 	}
 }
@@ -133,9 +135,5 @@ func getReferences(resource *orch_v1.StateResource, context *wiringplugin.Wiring
 }
 
 func getObjectMeta(resource *orch_v1.StateResource, context *wiringplugin.WiringContext) (meta_v1.ObjectMeta, error) {
-	return meta_v1.ObjectMeta{
-		Annotations: map[string]string{
-			voyager.Domain + "/envResourcePrefix": string(ResourceType),
-		},
-	}, nil
+	return meta_v1.ObjectMeta{}, nil
 }

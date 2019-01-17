@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"reflect"
 
+	smith_v1 "github.com/atlassian/smith/pkg/apis/smith/v1"
 	"github.com/atlassian/voyager"
 	orch_v1 "github.com/atlassian/voyager/pkg/apis/orchestration/v1"
 	"github.com/atlassian/voyager/pkg/orchestration/wiring/wiringplugin"
+	"github.com/atlassian/voyager/pkg/orchestration/wiring/wiringutil/knownshapes"
 	"github.com/atlassian/voyager/pkg/orchestration/wiring/wiringutil/svccatentangler"
+	sc_v1b1 "github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	"github.com/pkg/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -74,6 +77,10 @@ type WiringPlugin struct {
 	svccatentangler.SvcCatEntangler
 }
 
+type ReadReplicaParam struct {
+	ReadReplica bool `json:"ReadReplica"`
+}
+
 func New() *WiringPlugin {
 	return &WiringPlugin{
 		SvcCatEntangler: svccatentangler.SvcCatEntangler{
@@ -82,9 +89,29 @@ func New() *WiringPlugin {
 			InstanceSpec:                  instanceSpec,
 			ObjectMeta:                    objectMeta,
 			ResourceType:                  ResourceType,
-			OptionalShapes:                svccatentangler.NoOptionalShapes,
+
+			OptionalShapes: shapes,
 		},
 	}
+}
+
+func shapes(resource *orch_v1.StateResource, smithResource *smith_v1.Resource, context *wiringplugin.WiringContext) ([]wiringplugin.Shape, error) {
+	si := smithResource.Spec.Object.(*sc_v1b1.ServiceInstance)
+	var finalSpec FinalSpec
+	err := json.Unmarshal(si.Spec.Parameters.Raw, &finalSpec)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	var readReplicaParam ReadReplicaParam
+	err = json.Unmarshal(finalSpec.Parameters, &readReplicaParam)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return []wiringplugin.Shape{
+		knownshapes.NewSharedDbShape(smithResource.Name, readReplicaParam.ReadReplica),
+	}, nil
 }
 
 func instanceSpec(resource *orch_v1.StateResource, context *wiringplugin.WiringContext) ([]byte, error) {
@@ -183,9 +210,5 @@ func instanceSpec(resource *orch_v1.StateResource, context *wiringplugin.WiringC
 }
 
 func objectMeta(resource *orch_v1.StateResource, context *wiringplugin.WiringContext) (meta_v1.ObjectMeta, error) {
-	return meta_v1.ObjectMeta{
-		Annotations: map[string]string{
-			voyager.Domain + "/envResourcePrefix": rdsEnvResourcePrefix,
-		},
-	}, nil
+	return meta_v1.ObjectMeta{}, nil
 }

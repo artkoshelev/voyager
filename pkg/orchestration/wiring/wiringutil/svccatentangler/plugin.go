@@ -8,7 +8,6 @@ import (
 	orch_v1 "github.com/atlassian/voyager/pkg/apis/orchestration/v1"
 	"github.com/atlassian/voyager/pkg/orchestration/wiring/wiringplugin"
 	"github.com/atlassian/voyager/pkg/orchestration/wiring/wiringutil"
-	"github.com/atlassian/voyager/pkg/orchestration/wiring/wiringutil/knownshapes"
 	"github.com/atlassian/voyager/pkg/servicecatalog"
 	sc_v1b1 "github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	"github.com/pkg/errors"
@@ -116,9 +115,8 @@ func (e *SvcCatEntangler) constructServiceInstance(resource *orch_v1.StateResour
 }
 
 func (e *SvcCatEntangler) constructResourceContract(resource *orch_v1.StateResource, smithResource *smith_v1.Resource, context *wiringplugin.WiringContext) (*wiringplugin.ResourceContract, error) {
-	supportedShapes := []wiringplugin.Shape{
-		knownshapes.NewBindableEnvironmentVariables(smithResource.Name, "", nil),
-	}
+	supportedShapes := []wiringplugin.Shape{}
+
 	optionalShapes, err := e.OptionalShapes(resource, smithResource, context)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to compute optional shapes for resource %q of type %q", resource.Name, resource.Type)

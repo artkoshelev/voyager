@@ -3,9 +3,11 @@ package asapkey
 import (
 	"encoding/json"
 
+	smith_v1 "github.com/atlassian/smith/pkg/apis/smith/v1"
 	"github.com/atlassian/voyager"
 	orch_v1 "github.com/atlassian/voyager/pkg/apis/orchestration/v1"
 	"github.com/atlassian/voyager/pkg/orchestration/wiring/wiringplugin"
+	"github.com/atlassian/voyager/pkg/orchestration/wiring/wiringutil/knownshapes"
 	"github.com/atlassian/voyager/pkg/orchestration/wiring/wiringutil/svccatentangler"
 	"github.com/pkg/errors"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,6 +23,7 @@ const (
 	RepositoryStg                                      = "https://asap-distribution.us-west-1.staging.paas-inf.net/"
 	RepositoryFallbackStg                              = "https://asap-distribution.us-east-1.staging.paas-inf.net/"
 	ResourceType                  voyager.ResourceType = "ASAPKey"
+	ResourcePrefix                                     = "ASAP"
 )
 
 type autowiringOnlySpec struct {
@@ -43,9 +46,20 @@ func New() *WiringPlugin {
 			InstanceSpec:                  instanceSpec,
 			ObjectMeta:                    objectMeta,
 			ResourceType:                  ResourceType,
-			OptionalShapes:                svccatentangler.NoOptionalShapes,
+			OptionalShapes:                shapes,
 		},
 	}
+}
+
+func shapes(resource *orch_v1.StateResource, smithResource *smith_v1.Resource, context *wiringplugin.WiringContext) ([]wiringplugin.Shape, error) {
+	bindableEnvVarShape := knownshapes.NewBindableEnvironmentVariables(smithResource.Name, ResourcePrefix, map[string]string{
+		"PRIVATE_KEY": "data.private_key",
+		"ISSUER":      "data.issuer",
+		"KEY_ID":      "data.key_id",
+		"AUDIENCE":    "data.audience",
+	})
+	bindableEnvVarShape.Data.ExcludeResourceNameInKey = true
+	return []wiringplugin.Shape{bindableEnvVarShape}, nil
 }
 
 func instanceSpec(resource *orch_v1.StateResource, context *wiringplugin.WiringContext) ([]byte, error) {
@@ -69,9 +83,5 @@ func instanceSpec(resource *orch_v1.StateResource, context *wiringplugin.WiringC
 }
 
 func objectMeta(resource *orch_v1.StateResource, context *wiringplugin.WiringContext) (meta_v1.ObjectMeta, error) {
-	return meta_v1.ObjectMeta{
-		Annotations: map[string]string{
-			voyager.Domain + "/envResourcePrefix": string(ResourceType),
-		},
-	}, nil
+	return meta_v1.ObjectMeta{}, nil
 }
