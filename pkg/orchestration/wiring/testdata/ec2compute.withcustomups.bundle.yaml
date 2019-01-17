@@ -13,68 +13,40 @@ metadata:
     uid: ""
 spec:
   resources:
-  - name: basic--instance
+  - name: ups--instance
     spec:
       object:
         apiVersion: servicecatalog.k8s.io/v1beta1
         kind: ServiceInstance
         metadata:
-          name: basic
+          name: ups
         spec:
-          clusterServiceClassExternalID: 06068066-7f66-4297-8683-a1ba0a2b7401
-          clusterServicePlanExternalID: 56393d2c-d936-4634-a178-19f491a3551a
+          clusterServiceClassExternalID: 4f6e6cf6-ffdd-425f-a2c7-3c9258ad2468
+          clusterServicePlanExternalID: 86064792-7ea2-467b-af93-ac9694d96d52
           parameters:
-            environment:
-              lowPriorityPagerdutyEndpoint: https://events.pagerduty.com/adapter/cloudwatch_sns/v1/12312312312312312312312312312312
-              pagerdutyEndpoint: https://events.pagerduty.com/adapter/cloudwatch_sns/v1/12312312312312312312312312312312
-              tags:
-                business_unit: some_unit
-                environment: microstestenv
-                environment_type: testenv
-                platform: voyager
-                resource_owner: an_owner
-                service_name: test-servicename
-            resource:
-              name: basic
-              type: sqs
-            serviceName: test-servicename
-  - name: compute--basic--binding
+            credentials:
+              my-thing: xxx
+  - name: compute--ups--binding
     references:
     - example: aname
-      name: basic--instance-metadata-name
+      name: ups--instance-metadata-name
       path: metadata.name
-      resource: basic--instance
+      resource: ups--instance
     spec:
       object:
         apiVersion: servicecatalog.k8s.io/v1beta1
         kind: ServiceBinding
         metadata:
-          name: compute--basic
+          name: compute--ups
         spec:
           instanceRef:
-            name: '!{basic--instance-metadata-name}'
-          secretName: compute--basic
+            name: '!{ups--instance-metadata-name}'
+          secretName: compute--ups
   - name: compute--secret
     references:
-    - name: compute--basic--binding-0e9f041d5030b61b2499c6a46b9d4cbc8de90231
-      resource: compute--basic--binding
-      path: data.dead-queue-name
-      modifier: bindsecret
-    - name: compute--basic--binding-5c07b3fcac0d1679ef8cfed826c1a87e76dc1ec8
-      resource: compute--basic--binding
-      path: data.dead-queue-url
-      modifier: bindsecret
-    - name: compute--basic--binding-9bb5777ce55d593549819fefa9c511c1b35c7ffc
-      resource: compute--basic--binding
-      path: data.queue-name
-      modifier: bindsecret
-    - name: compute--basic--binding-a3243498a5d79ce89916b41f35d62a3d46447e05
-      resource: compute--basic--binding
-      path: data.queue-url
-      modifier: bindsecret
-    - name: compute--basic--binding-bd979d387fee1cee090264d63f71958e9e6117b6
-      resource: compute--basic--binding
-      path: data.queue-region
+    - name: compute--ups--binding-ec77961a2a5d37c885fc880a40c624d07d8d3aa9
+      path: data.my-thing
+      resource: compute--ups--binding
       modifier: bindsecret
     spec:
       plugin:
@@ -84,14 +56,10 @@ spec:
           data:
             ec2ComputeEnvVars:
               secretEnvVars:
-                SQS_BASIC_QUEUE_REGION: '!{compute--basic--binding-bd979d387fee1cee090264d63f71958e9e6117b6}'
-                SQS_BASIC_QUEUE_URL: '!{compute--basic--binding-a3243498a5d79ce89916b41f35d62a3d46447e05}'
-                SQS_BASIC_DEAD_QUEUE_NAME: "!{compute--basic--binding-0e9f041d5030b61b2499c6a46b9d4cbc8de90231}"
-                SQS_BASIC_DEAD_QUEUE_URL: "!{compute--basic--binding-5c07b3fcac0d1679ef8cfed826c1a87e76dc1ec8}"
-                SQS_BASIC_QUEUE_NAME: "!{compute--basic--binding-9bb5777ce55d593549819fefa9c511c1b35c7ffc}"
+                UPS_UPS_MY_THING: '!{compute--ups--binding-ec77961a2a5d37c885fc880a40c624d07d8d3aa9}'
   - name: compute---iamrole
     references:
-    - resource: compute--basic--binding
+    - resource: compute--ups--binding
     spec:
       plugin:
         name: iamrole
