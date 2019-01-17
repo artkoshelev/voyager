@@ -1,6 +1,8 @@
 package secretplugin
 
 import (
+	"encoding/json"
+
 	smith_v1 "github.com/atlassian/smith/pkg/apis/smith/v1"
 	smith_plugin "github.com/atlassian/smith/pkg/plugin"
 	"github.com/pkg/errors"
@@ -45,13 +47,22 @@ func (p *Plugin) Process(rawSpec map[string]interface{}, context *smith_plugin.C
 		return nil, errors.Wrap(err, "failed to convert into typed spec")
 	}
 
+	converted := map[string][]byte{}
+	for k, v := range rawSpec {
+		envVarJSONString, err := json.Marshal(v)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		converted[k] = envVarJSONString
+	}
+
 	return &smith_plugin.ProcessResult{
 		Object: &core_v1.Secret{
 			TypeMeta: meta_v1.TypeMeta{
 				APIVersion: core_v1.SchemeGroupVersion.String(),
 				Kind:       "Secret",
 			},
-			Data: spec.Data,
+			Data: converted,
 		},
 	}, nil
 }
